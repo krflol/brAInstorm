@@ -29,6 +29,25 @@ class MindMapEditorCLI(cmd.Cmd):
         self.map_ids(self.root_topic)
         self.list_all_nodes(self.root_topic)
 
+    def initialize_data(self):
+        """
+        Initialize or reinitialize the data from the XMind file.
+        """
+        self.root_topic = self.load_mind_map(self.xmind_file_path)
+        self.current_topic = self.root_topic
+        self.id_map = {}  # Dictionary to map complex IDs to simple integers
+        self.counter = 1  # Counter for simple integer IDs
+        self.map_ids(self.root_topic)
+        self.list_all_nodes(self.root_topic)
+
+    def do_reload(self, arg):
+        """
+        Reload the mind map from the file.
+        """
+        print("Reloading the mind map...")
+        self.initialize_data()
+        print("Mind map reloaded.")
+        
     def map_ids(self, topic, depth=0):
         """
         Map each topic ID to a simpler integer ID.
