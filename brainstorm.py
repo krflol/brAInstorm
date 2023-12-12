@@ -16,7 +16,7 @@ namespaces = {'xmlns': 'urn:xmind:xmap:xmlns:content:2.0'}
 # Register the namespace
 ET.register_namespace('', namespaces['xmlns'])
 class MindMapEditorCLI(cmd.Cmd):
-    intro = 'Welcome to the Mind Map Editor CLI. Type help or ? to list commands.\n'
+    intro = 'Welcome to brAInstorm. Type help or ? to list commands.\n'
     prompt = '(brAInstorm) '
 
     def __init__(self, xmind_file_path):
@@ -24,7 +24,21 @@ class MindMapEditorCLI(cmd.Cmd):
         self.xmind_file_path = xmind_file_path
         self.root_topic = self.load_mind_map(xmind_file_path)
         self.current_topic = self.root_topic
+        self.id_map = {}  # Dictionary to map complex IDs to simple integers
+        self.counter = 1  # Counter for simple integer IDs
+        self.map_ids(self.root_topic)
         self.list_all_nodes(self.root_topic)
+
+    def map_ids(self, topic, depth=0):
+        """
+        Map each topic ID to a simpler integer ID.
+        """
+        self.id_map[self.counter] = topic
+        topic.set('simple_id', str(self.counter))
+        self.counter += 1
+
+        for subtopic in topic.findall('{urn:xmind:xmap:xmlns:content:2.0}children/{urn:xmind:xmap:xmlns:content:2.0}topics/{urn:xmind:xmap:xmlns:content:2.0}topic'):
+            self.map_ids(subtopic, depth + 1)
 
 
     def load_mind_map(self, file_path):
@@ -34,26 +48,18 @@ class MindMapEditorCLI(cmd.Cmd):
             content_root = ET.parse(content_xml_path).getroot()
             return content_root.find('{urn:xmind:xmap:xmlns:content:2.0}sheet').find('{urn:xmind:xmap:xmlns:content:2.0}topic')
 
-    def do_select(self, topic_id):
+    def do_select(self, simple_id):
         """
-        Select a topic by its ID.
-        Usage: select [topic_id]
+        Select a topic by its simple integer ID.
+        Usage: select [simple_id]
         """
-        def find_topic(element, id):
-            if element.get('id') == id:
-                return element
-            for subelement in element.findall('{urn:xmind:xmap:xmlns:content:2.0}children/{urn:xmind:xmap:xmlns:content:2.0}topics/{urn:xmind:xmap:xmlns:content:2.0}topic'):
-                result = find_topic(subelement, id)
-                if result:
-                    return result
-            return None
-
-        topic = find_topic(self.root_topic, topic_id)
-        if topic:
+        try:
+            simple_id = int(simple_id)
+            topic = self.id_map[simple_id]
             self.current_topic = topic
-            print(f"Selected topic with ID {topic_id}")
-        else:
-            print(f"No topic found with ID {topic_id}")
+            print(f"Selected topic with simple ID {simple_id}")
+        except (ValueError, KeyError):
+            print(f"No topic found with simple ID {simple_id}")
 
     def do_show(self, arg):
         """
@@ -163,32 +169,45 @@ class MindMapEditorCLI(cmd.Cmd):
 
     def query_chatgpt(self, prompt):
         """
-        Send a query to ChatGPT and return the response.
+        Send a query to ChatGPT using the chat model and return the response.
         """
         try:
-            response = openai.Completion.create(
-                model="gpt-4-1106-preview",
-                prompt=prompt,
-                max_tokens=100
-            )
-            return response.choices[0].text.strip()
+            
+
+            # Start a chat session
+            start_sequence = "\nAI:"
+            restart_sequence = "\nHuman: "
+            session_prompt = f"Human: {prompt}" + start_sequence
+
+            prompt = session_prompt
+            messages = [
+                {"role": "system", "content": "You are a programming expert."},
+                {"role": "user", "content": prompt}
+            ]
+            response = openai.ChatCompletion.create(model="gpt-4-1106-preview", messages=messages)
+            response_content = response.choices[0].message['content']
+            return response_content
         except Exception as e:
             print("Error querying ChatGPT:", e)
             return ""
+        
+
+
     def list_all_nodes(self, topic, depth=0):
         """
-        Recursively list all nodes and their IDs.
+        Recursively list all nodes with their simple integer IDs.
         """
         title_elem = topic.find('{urn:xmind:xmap:xmlns:content:2.0}title')
         if title_elem is not None:
-            print('  ' * depth + f"{title_elem.text} (ID: {topic.get('id')})")
+            simple_id = topic.get('simple_id')
+            print('  ' * depth + f"{title_elem.text} (ID: {simple_id})")
 
         for subtopic in topic.findall('{urn:xmind:xmap:xmlns:content:2.0}children/{urn:xmind:xmap:xmlns:content:2.0}topics/{urn:xmind:xmap:xmlns:content:2.0}topic'):
             self.list_all_nodes(subtopic, depth + 1)
 
     def do_list_nodes(self, arg):
         """
-        List all nodes and their IDs.
+        List all nodes with their simple integer IDs.
         """
         self.list_all_nodes(self.root_topic)
 
