@@ -143,7 +143,7 @@ class MindMapEditorCLI(cmd.Cmd):
         """
         try:
             response = openai.Completion.create(
-                model="text-davinci-003",
+                model="gpt-4-1106-preview",
                 prompt=prompt,
                 max_tokens=100
             )
