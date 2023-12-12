@@ -3,16 +3,24 @@ import xml.etree.ElementTree as ET
 import zipfile
 import sys
 import openai
+import dotenv
+import os
+
+# Load environment variables
+dotenv.load_dotenv()
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
 class MindMapEditorCLI(cmd.Cmd):
     intro = 'Welcome to the Mind Map Editor CLI. Type help or ? to list commands.\n'
-    prompt = '(mindmap) '
+    prompt = '(brAInstorm) '
 
     def __init__(self, xmind_file_path):
         super().__init__()
         self.xmind_file_path = xmind_file_path
         self.root_topic = self.load_mind_map(xmind_file_path)
         self.current_topic = self.root_topic
+        self.list_all_nodes(self.root_topic)
+
 
     def load_mind_map(self, file_path):
         with zipfile.ZipFile(file_path, 'r') as zip_ref:
@@ -134,7 +142,6 @@ class MindMapEditorCLI(cmd.Cmd):
         Send a query to ChatGPT and return the response.
         """
         try:
-            openai.api_key = 'your-api-key'
             response = openai.Completion.create(
                 model="text-davinci-003",
                 prompt=prompt,
@@ -144,6 +151,22 @@ class MindMapEditorCLI(cmd.Cmd):
         except Exception as e:
             print("Error querying ChatGPT:", e)
             return ""
+    def list_all_nodes(self, topic, depth=0):
+        """
+        Recursively list all nodes and their IDs.
+        """
+        title_elem = topic.find('{urn:xmind:xmap:xmlns:content:2.0}title')
+        if title_elem is not None:
+            print('  ' * depth + f"{title_elem.text} (ID: {topic.get('id')})")
+
+        for subtopic in topic.findall('{urn:xmind:xmap:xmlns:content:2.0}children/{urn:xmind:xmap:xmlns:content:2.0}topics/{urn:xmind:xmap:xmlns:content:2.0}topic'):
+            self.list_all_nodes(subtopic, depth + 1)
+
+    def do_list_nodes(self, arg):
+        """
+        List all nodes and their IDs.
+        """
+        self.list_all_nodes(self.root_topic)
 
     def do_exit(self, arg):
         """
