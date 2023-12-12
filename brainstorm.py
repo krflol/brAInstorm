@@ -5,11 +5,16 @@ import sys
 import openai
 import dotenv
 import os
+import tempfile
+import shutil
+
 
 # Load environment variables
 dotenv.load_dotenv()
 openai.api_key = os.getenv("OPENAI_API_KEY")
-
+namespaces = {'xmlns': 'urn:xmind:xmap:xmlns:content:2.0'}
+# Register the namespace
+ET.register_namespace('', namespaces['xmlns'])
 class MindMapEditorCLI(cmd.Cmd):
     intro = 'Welcome to the Mind Map Editor CLI. Type help or ? to list commands.\n'
     prompt = '(brAInstorm) '
@@ -105,9 +110,28 @@ class MindMapEditorCLI(cmd.Cmd):
         """
         Save the current mind map back to the XMind file.
         """
-        with zipfile.ZipFile(self.xmind_file_path, 'w') as zip_ref:
-            zip_ref.writestr('content.xml', ET.tostring(self.root_topic))
+        try:
+            # Create a temporary directory
+            with tempfile.TemporaryDirectory() as temp_dir:
+                # Extract the existing XMind file contents to the temporary directory
+                with zipfile.ZipFile(self.xmind_file_path, 'r') as zip_ref:
+                    zip_ref.extractall(temp_dir)
+
+                # Serialize and write the updated content.xml
+                content_xml_path = os.path.join(temp_dir, 'content.xml')
+                tree = ET.ElementTree(self.root_topic)
+                tree.write(content_xml_path, encoding='UTF-8', xml_declaration=True)
+
+                # Create a new XMind file, copying other files and replacing content.xml
+                with zipfile.ZipFile(self.xmind_file_path, 'w', zipfile.ZIP_DEFLATED) as new_zip:
+                    for folder, subs, files in os.walk(temp_dir):
+                        for filename in files:
+                            file_path = os.path.join(folder, filename)
+                            new_zip.write(file_path, os.path.relpath(file_path, temp_dir))
+
             print(f"Saved changes to {self.xmind_file_path}")
+        except Exception as e:
+            print(f"Error saving the file: {e}")
 
     def do_brainstorm(self, additional_context=''):
         """
