@@ -106,4 +106,56 @@ class MindMapEditorCLI(cmd.Cmd):
         Use ChatGPT to brainstorm ideas based on the current topic.
         Usage: brainstorm [additional_context]
         """
-        context =
+        context = self.extract_context(self.current_topic)
+        full_prompt = context + ' ' + additional_context
+        response = self.query_chatgpt(full_prompt)
+        print("ChatGPT suggests:", response)
+
+        if input("Add this suggestion as a subnode? (y/n): ").lower() == 'y':
+            self.do_add(response)
+
+    def extract_context(self, topic):
+        """
+        Extract context from the current topic and its subnodes.
+        """
+        context = []
+        title_elem = topic.find('{urn:xmind:xmap:xmlns:content:2.0}title')
+        if title_elem is not None:
+            context.append(title_elem.text)
+
+        for subtopic in topic.findall('{urn:xmind:xmap:xmlns:content:2.0}children/{urn:xmind:xmap:xmlns:content:2.0}topics/{urn:xmind:xmap:xmlns:content:2.0}topic'):
+            sub_title = subtopic.find('{urn:xmind:xmap:xmlns:content:2.0}title').text
+            context.append(sub_title)
+
+        return ' '.join(context)
+
+    def query_chatgpt(self, prompt):
+        """
+        Send a query to ChatGPT and return the response.
+        """
+        try:
+            openai.api_key = 'your-api-key'
+            response = openai.Completion.create(
+                model="text-davinci-003",
+                prompt=prompt,
+                max_tokens=100
+            )
+            return response.choices[0].text.strip()
+        except Exception as e:
+            print("Error querying ChatGPT:", e)
+            return ""
+
+    def do_exit(self, arg):
+        """
+        Exit the Mind Map Editor CLI.
+        """
+        print("Exiting Mind Map Editor CLI...")
+        return True
+
+# Check if the filename is provided
+if len(sys.argv) < 2:
+    print("Usage: python brainstorm.py [filename.xmind]")
+else:
+    filename = sys.argv[1]
+    cli = MindMapEditorCLI(filename)
+    cli.cmdloop()
