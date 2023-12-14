@@ -81,6 +81,32 @@
         "documentation": {}
     },
     {
+        "label": "time",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "time",
+        "description": "time",
+        "detail": "time",
+        "documentation": {}
+    },
+    {
+        "label": "deepcopy",
+        "importPath": "copy",
+        "description": "copy",
+        "isExtraImport": true,
+        "detail": "copy",
+        "documentation": {}
+    },
+    {
+        "label": "re",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "re",
+        "description": "re",
+        "detail": "re",
+        "documentation": {}
+    },
+    {
         "label": "MindMapEditorCLI",
         "kind": 6,
         "importPath": "brainstorm",
@@ -105,6 +131,33 @@
         "description": "brainstorm",
         "peekOfCode": "namespaces = {'xmlns': 'urn:xmind:xmap:xmlns:content:2.0'}\n# Register the namespace\nET.register_namespace('', namespaces['xmlns'])\nclass MindMapEditorCLI(cmd.Cmd):\n    intro = 'Welcome to brAInstorm. Type help or ? to list commands.\\n'\n    prompt = '(brAInstorm) '\n    def __init__(self, xmind_file_path):\n        super().__init__()\n        self.xmind_file_path = xmind_file_path\n        self.root_topic = self.load_mind_map(xmind_file_path)",
         "detail": "brainstorm",
+        "documentation": {}
+    },
+    {
+        "label": "read_file_content",
+        "kind": 2,
+        "importPath": "inspect_xml",
+        "description": "inspect_xml",
+        "peekOfCode": "def read_file_content(file_path):\n    with open(file_path, 'r', encoding='utf-8') as file:\n        return file.read()\n# Read and return the content of content.xml\ncontent_xml_data = read_file_content(content_xml_path)\ncontent_xml_data[:1000]  # Displaying the first 1000 characters for a brief look",
+        "detail": "inspect_xml",
+        "documentation": {}
+    },
+    {
+        "label": "content_xml_path",
+        "kind": 5,
+        "importPath": "inspect_xml",
+        "description": "inspect_xml",
+        "peekOfCode": "content_xml_path = r'C:\\dev\\brAInstorm\\content.xml'\n# Function to read the content of a file\ndef read_file_content(file_path):\n    with open(file_path, 'r', encoding='utf-8') as file:\n        return file.read()\n# Read and return the content of content.xml\ncontent_xml_data = read_file_content(content_xml_path)\ncontent_xml_data[:1000]  # Displaying the first 1000 characters for a brief look",
+        "detail": "inspect_xml",
+        "documentation": {}
+    },
+    {
+        "label": "content_xml_data",
+        "kind": 5,
+        "importPath": "inspect_xml",
+        "description": "inspect_xml",
+        "peekOfCode": "content_xml_data = read_file_content(content_xml_path)\ncontent_xml_data[:1000]  # Displaying the first 1000 characters for a brief look",
+        "detail": "inspect_xml",
         "documentation": {}
     }
 ]

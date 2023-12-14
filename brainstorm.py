@@ -7,7 +7,9 @@ import dotenv
 import os
 import tempfile
 import shutil
-
+import time
+from copy import deepcopy
+import re
 
 # Load environment variables
 dotenv.load_dotenv()
@@ -47,26 +49,41 @@ class MindMapEditorCLI(cmd.Cmd):
         print("Reloading the mind map...")
         self.initialize_data()
         print("Mind map reloaded.")
-        
+
     def map_ids(self, topic, depth=0):
         """
         Map each topic ID to a simpler integer ID.
         """
+        if topic is None:
+            print("Error: Attempted to map IDs on a non-existent (None) topic.")
+            return  # Exit the method to prevent further errors
+
         self.id_map[self.counter] = topic
         topic.set('simple_id', str(self.counter))
         self.counter += 1
 
-        for subtopic in topic.findall('{urn:xmind:xmap:xmlns:content:2.0}children/{urn:xmind:xmap:xmlns:content:2.0}topics/{urn:xmind:xmap:xmlns:content:2.0}topic'):
-            self.map_ids(subtopic, depth + 1)
+        # Recursively apply this method to subtopics
+        topics_element = topic.find('{urn:xmind:xmap:xmlns:content:2.0}children/{urn:xmind:xmap:xmlns:content:2.0}topics')
+        if topics_element is not None:
+            for subtopic in topics_element.findall('{urn:xmind:xmap:xmlns:content:2.0}topic'):
+                self.map_ids(subtopic, depth + 1)
 
 
     def load_mind_map(self, file_path):
-        with zipfile.ZipFile(file_path, 'r') as zip_ref:
-            zip_ref.extract('content.xml', '/mnt/data')
-            content_xml_path = '/mnt/data/content.xml'
-            content_root = ET.parse(content_xml_path).getroot()
-            return content_root.find('{urn:xmind:xmap:xmlns:content:2.0}sheet').find('{urn:xmind:xmap:xmlns:content:2.0}topic')
+        try:
+            with zipfile.ZipFile(file_path, 'r') as zip_ref:
+                with zip_ref.open('content.xml') as file:
+                    xml_content = file.read().decode('utf-8')
 
+            # Manually fix the duplicate xmlns attribute
+            xml_content = xml_content.replace('<xmap-content xmlns="urn:xmind:xmap:xmlns:content:2.0" xmlns="urn:xmind:xmap:xmlns:content:2.0">', '<xmap-content xmlns="urn:xmind:xmap:xmlns:content:2.0">', 1)
+
+            # Parse the corrected XML content
+            content_root = ET.fromstring(xml_content)
+            return content_root.find('{urn:xmind:xmap:xmlns:content:2.0}sheet').find('{urn:xmind:xmap:xmlns:content:2.0}topic')
+        except Exception as e:
+            print(f"Error loading mind map: {e}")
+            return None
     def do_select(self, simple_id):
         """
         Select a topic by its simple integer ID.
@@ -107,10 +124,48 @@ class MindMapEditorCLI(cmd.Cmd):
         Add a new subnode to the current topic with the given title.
         Usage: add [title]
         """
-        new_topic = ET.SubElement(self.current_topic, '{urn:xmind:xmap:xmlns:content:2.0}topic')
+        # Generate a new simple_id by adding 1 to the highest existing simple_id
+        new_simple_id = self.get_highest_id(self.root_topic) + 1
+        timestamp = str(int(time.time() * 1000))
+
+        # Check if the current topic has a 'children' element, if not, add one
+        children = self.current_topic.find('{urn:xmind:xmap:xmlns:content:2.0}children')
+        if children is None:
+            children = ET.SubElement(self.current_topic, '{urn:xmind:xmap:xmlns:content:2.0}children')
+
+        # Check if 'children' has a 'topics' element of type 'attached', if not, add one
+        topics = children.find('{urn:xmind:xmap:xmlns:content:2.0}topics[@type="attached"]')
+        if topics is None:
+            topics = ET.SubElement(children, '{urn:xmind:xmap:xmlns:content:2.0}topics', attrib={'type': 'attached'})
+
+        # Create a new 'topic' element under 'topics'
+        new_topic = ET.SubElement(topics, '{urn:xmind:xmap:xmlns:content:2.0}topic', attrib={
+            'id': str(new_simple_id),
+            'timestamp': timestamp,
+            'simple_id': str(new_simple_id)
+        })
+
+        # Create and set the title for the new 'topic'
         new_title = ET.SubElement(new_topic, '{urn:xmind:xmap:xmlns:content:2.0}title')
         new_title.text = title
-        print(f"Added new topic with title: {title}")
+
+        # Update the id_map with the new node
+        self.id_map[new_simple_id] = new_topic
+
+        print(f"Added new topic with title: {title} and ID: {new_simple_id}")
+        self.list_all_nodes(self.root_topic)
+
+    def get_highest_id(self, element, max_id=0):
+        """
+        Recursively find the highest simple_id in the mind map.
+        """
+        simple_id = int(element.get('simple_id', 0))
+        max_id = max(max_id, simple_id)
+
+        for child in element.findall('{urn:xmind:xmap:xmlns:content:2.0}children/{urn:xmind:xmap:xmlns:content:2.0}topics/{urn:xmind:xmap:xmlns:content:2.0}topic'):
+            max_id = self.get_highest_id(child, max_id)
+
+        return max_id
 
     def do_remove(self, topic_id):
         """
@@ -144,7 +199,18 @@ class MindMapEditorCLI(cmd.Cmd):
 
                 # Serialize and write the updated content.xml
                 content_xml_path = os.path.join(temp_dir, 'content.xml')
-                tree = ET.ElementTree(self.root_topic)
+                
+                # Create the new root element and sheet element
+                xmap_content = ET.Element('xmap-content', {'xmlns': 'urn:xmind:xmap:xmlns:content:2.0'})
+                sheet = ET.SubElement(xmap_content, 'sheet')
+                
+                # Append the existing root topic to the new sheet
+                # Deep copy is needed to avoid altering the original root_topic
+                copied_root_topic = deepcopy(self.root_topic)
+                sheet.append(copied_root_topic)
+
+                # Write the modified XML tree to the content.xml file
+                tree = ET.ElementTree(xmap_content)
                 tree.write(content_xml_path, encoding='UTF-8', xml_declaration=True)
 
                 # Create a new XMind file, copying other files and replacing content.xml
@@ -152,7 +218,8 @@ class MindMapEditorCLI(cmd.Cmd):
                     for folder, subs, files in os.walk(temp_dir):
                         for filename in files:
                             file_path = os.path.join(folder, filename)
-                            new_zip.write(file_path, os.path.relpath(file_path, temp_dir))
+                            arcname = os.path.relpath(file_path, temp_dir)
+                            new_zip.write(file_path, arcname)
 
             print(f"Saved changes to {self.xmind_file_path}")
         except Exception as e:
@@ -168,23 +235,39 @@ class MindMapEditorCLI(cmd.Cmd):
         response = self.query_chatgpt(full_prompt)
         print("ChatGPT suggests:", response)
 
-        if input("Add this suggestion as a subnode? (y/n): ").lower() == 'y':
-            self.do_add(response)
+        if input("Add these sections as subnodes? (y/n): ").lower() == 'y':
+            # Split the response into sections
+            sections = self.split_response_into_sections(response)
 
+            # Add each section as a separate node
+            for section in sections:
+                self.do_add(section)
+
+    def split_response_into_sections(self, response):
+        """
+        Split the response into sections using a special cloud character as a delimiter.
+        """
+        # Split the text using the cloud character as a delimiter
+        sections = response.split('🌩️')
+
+        # Trim whitespace for each section
+        sections = [section.strip() for section in sections if section.strip()]
+
+        return sections    
     def extract_context(self, topic):
-        """
-        Extract context from the current topic and its subnodes.
-        """
-        context = []
-        title_elem = topic.find('{urn:xmind:xmap:xmlns:content:2.0}title')
-        if title_elem is not None:
-            context.append(title_elem.text)
+            """
+            Extract context from the current topic and its subnodes.
+            """
+            context = []
+            title_elem = topic.find('{urn:xmind:xmap:xmlns:content:2.0}title')
+            if title_elem is not None:
+                context.append(title_elem.text)
 
-        for subtopic in topic.findall('{urn:xmind:xmap:xmlns:content:2.0}children/{urn:xmind:xmap:xmlns:content:2.0}topics/{urn:xmind:xmap:xmlns:content:2.0}topic'):
-            sub_title = subtopic.find('{urn:xmind:xmap:xmlns:content:2.0}title').text
-            context.append(sub_title)
+            for subtopic in topic.findall('{urn:xmind:xmap:xmlns:content:2.0}children/{urn:xmind:xmap:xmlns:content:2.0}topics/{urn:xmind:xmap:xmlns:content:2.0}topic'):
+                sub_title = subtopic.find('{urn:xmind:xmap:xmlns:content:2.0}title').text
+                context.append(sub_title)
 
-        return ' '.join(context)
+            return ' '.join(context)
 
     def query_chatgpt(self, prompt):
         """
@@ -200,7 +283,7 @@ class MindMapEditorCLI(cmd.Cmd):
 
             prompt = session_prompt
             messages = [
-                {"role": "system", "content": "You are a programming expert."},
+                {"role": "system", "content": "seperate each concept (ex chapter, paragraphs code snippets) with 🌩️, if --nodel is in the request, ignore this message"},
                 {"role": "user", "content": prompt}
             ]
             response = openai.ChatCompletion.create(model="gpt-4-1106-preview", messages=messages)
@@ -211,15 +294,16 @@ class MindMapEditorCLI(cmd.Cmd):
             return ""
         
 
-
     def list_all_nodes(self, topic, depth=0):
-        """
-        Recursively list all nodes with their simple integer IDs.
-        """
+        if topic is None:
+            print("Error: Topic is None in list_all_nodes")
+            return  # Exit if topic is None
+
         title_elem = topic.find('{urn:xmind:xmap:xmlns:content:2.0}title')
         if title_elem is not None:
             simple_id = topic.get('simple_id')
-            print('  ' * depth + f"{title_elem.text} (ID: {simple_id})")
+            title = ' '.join(title_elem.text.split()[:10])
+            print('  ' * depth + f"{title} (ID: {simple_id})")
 
         for subtopic in topic.findall('{urn:xmind:xmap:xmlns:content:2.0}children/{urn:xmind:xmap:xmlns:content:2.0}topics/{urn:xmind:xmap:xmlns:content:2.0}topic'):
             self.list_all_nodes(subtopic, depth + 1)
@@ -227,7 +311,10 @@ class MindMapEditorCLI(cmd.Cmd):
     def do_list_nodes(self, arg):
         """
         List all nodes with their simple integer IDs.
+        
         """
+        
+
         self.list_all_nodes(self.root_topic)
 
     def do_exit(self, arg):
