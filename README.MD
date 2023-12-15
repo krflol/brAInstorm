@@ -2,7 +2,9 @@
 
 
 # brAInstorm Mind Map Editor CLI
+[![Video Title](https://img.youtube.com/vi/wp6bOKYFHZo/0.jpg)](https://www.youtube.com/watch?v=wp6bOKYFHZo)
 [![Video Title](https://img.youtube.com/vi/V7i2284UoEk/0.jpg)](https://www.youtube.com/watch?v=V7i2284UoEk)
+
 
 `brAInstorm` is a command-line interface tool designed for creating and manipulating mind maps in XMind format. It integrates with OpenAI's GPT-4 to enhance brainstorming sessions, allowing for AI-powered suggestions and ideas.
 
@@ -50,18 +52,5 @@ Replace `[filename.xmind]` with the path to your XMind file.
 - `list_nodes`: List all nodes with their IDs.
 - `exit`: Exit the CLI.
 
-## License
 
-[Your chosen license]
 
-## Contributing
-
-Contributions to `brAInstorm` are welcome. Please ensure to follow the code of conduct and contribution guidelines.
-
-## Contact
-
-For support or queries, contact [Your Contact Information].
-
-```
-
-This README provides a basic overview, installation instructions, usage guidelines, and a list of commands. You can expand it further with more detailed explanations, screenshots, or any additional information you think would be helpful for users.
