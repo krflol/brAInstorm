@@ -153,3 +153,4 @@ cython_debug/
 *.xmind
 *.xml
 *.zip
+.vscode/PythonImportHelper-v2-Completion.json

@@ -107,6 +107,15 @@
         "documentation": {}
     },
     {
+        "label": "pyperclip",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "pyperclip",
+        "description": "pyperclip",
+        "detail": "pyperclip",
+        "documentation": {}
+    },
+    {
         "label": "MindMapEditorCLI",
         "kind": 6,
         "importPath": "brainstorm",

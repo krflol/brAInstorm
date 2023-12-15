@@ -10,6 +10,7 @@ import shutil
 import time
 from copy import deepcopy
 import re
+import pyperclip
 
 # Load environment variables
 dotenv.load_dotenv()
@@ -42,6 +43,30 @@ class MindMapEditorCLI(cmd.Cmd):
         self.map_ids(self.root_topic)
         self.list_all_nodes(self.root_topic)
 
+
+    def do_copy(self, arg):
+        """
+        Copy the title and content of the current topic to the clipboard.
+        """
+        if self.current_topic is None:
+            print("No topic currently selected.")
+            return
+
+        title_elem = self.current_topic.find('{urn:xmind:xmap:xmlns:content:2.0}title')
+        if title_elem is None:
+            print("No title for this topic.")
+            return
+
+        title = title_elem.text
+        content = title  # Start with the title
+
+        file_content = self.current_topic.get('file_content')
+        if file_content:
+            content += "\n\nFile Content:\n" + file_content
+
+        # Copy content to clipboard
+        pyperclip.copy(content)
+        print("Content copied to clipboard.")
     def do_reload(self, arg):
         """
         Reload the mind map from the file.
@@ -75,15 +100,41 @@ class MindMapEditorCLI(cmd.Cmd):
                 with zip_ref.open('content.xml') as file:
                     xml_content = file.read().decode('utf-8')
 
-            # Manually fix the duplicate xmlns attribute
             xml_content = xml_content.replace('<xmap-content xmlns="urn:xmind:xmap:xmlns:content:2.0" xmlns="urn:xmind:xmap:xmlns:content:2.0">', '<xmap-content xmlns="urn:xmind:xmap:xmlns:content:2.0">', 1)
-
-            # Parse the corrected XML content
             content_root = ET.fromstring(xml_content)
-            return content_root.find('{urn:xmind:xmap:xmlns:content:2.0}sheet').find('{urn:xmind:xmap:xmlns:content:2.0}topic')
+
+            root_topic = content_root.find('{urn:xmind:xmap:xmlns:content:2.0}sheet').find('{urn:xmind:xmap:xmlns:content:2.0}topic')
+            self.extract_file_contents(root_topic)
+            return root_topic
         except Exception as e:
             print(f"Error loading mind map: {e}")
             return None
+        
+    def extract_file_contents(self, topic):
+        xlink_href = topic.get('{http://www.w3.org/1999/xlink}href')
+        if xlink_href and xlink_href.startswith('file://'):
+            file_path = xlink_href[7:]  # Remove 'file://' prefix to get the actual file path
+            try:
+                with open(file_path, 'r', encoding='utf-8') as file:  # Specify UTF-8 encoding
+                    file_content = file.read()
+                topic.set('file_content', file_content)
+                #print(f"File content extracted from {file_path}")
+            except UnicodeDecodeError:
+                # If utf-8 encoding fails, try a different encoding
+                try:
+                    with open(file_path, 'r', encoding='latin-1') as file:
+                        file_content = file.read()
+                    topic.set('file_content', file_content)
+                    #print(f"File content extracted from {file_path} using latin-1 encoding")
+                except Exception as e:
+                    print(f"Error reading file at {file_path} with latin-1 encoding: {e}")
+            except Exception as e:
+                print(f"Error reading file at {file_path} with utf-8 encoding: {e}")
+
+        for child in topic.findall('{urn:xmind:xmap:xmlns:content:2.0}children/{urn:xmind:xmap:xmlns:content:2.0}topics/{urn:xmind:xmap:xmlns:content:2.0}topic'):
+            self.extract_file_contents(child)
+
+
     def do_select(self, simple_id):
         """
         Select a topic by its simple integer ID.
@@ -226,23 +277,18 @@ class MindMapEditorCLI(cmd.Cmd):
             print(f"Error saving the file: {e}")
 
     def do_brainstorm(self, additional_context=''):
-        """
-        Use ChatGPT to brainstorm ideas based on the current topic.
-        Usage: brainstorm [additional_context]
-        """
-        context = self.extract_context(self.current_topic)
-        full_prompt = context + ' ' + additional_context
+        context_list = self.extract_context_with_file_content(self.current_topic)
+        full_context = ' '.join(context_list)  # Combine context into a single string
+        full_prompt = full_context + ' ' + additional_context.strip()
+
+        #print("Final prompt to ChatGPT:", full_prompt)  # Debugging print
         response = self.query_chatgpt(full_prompt)
-        print("ChatGPT suggests:", response)
+        print("ChatGPT suggests:", response)    
 
         if input("Add these sections as subnodes? (y/n): ").lower() == 'y':
-            # Split the response into sections
             sections = self.split_response_into_sections(response)
-
-            # Add each section as a separate node
             for section in sections:
                 self.do_add(section)
-
     def split_response_into_sections(self, response):
         """
         Split the response into sections using a special cloud character as a delimiter.
@@ -254,36 +300,37 @@ class MindMapEditorCLI(cmd.Cmd):
         sections = [section.strip() for section in sections if section.strip()]
 
         return sections    
-    def extract_context(self, topic):
-            """
-            Extract context from the current topic and its subnodes.
-            """
-            context = []
-            title_elem = topic.find('{urn:xmind:xmap:xmlns:content:2.0}title')
-            if title_elem is not None:
-                context.append(title_elem.text)
+    def extract_context_with_file_content(self, topic):
+        context = []
+        title_elem = topic.find('{urn:xmind:xmap:xmlns:content:2.0}title')
+        if title_elem is not None:
+            context_str = title_elem.text
+            file_content = topic.get('file_content')
+            if file_content:
+                context_str += f"\n\nFile Content:\n{file_content}\n"  # Adding file content
+            context.append(context_str)
 
-            for subtopic in topic.findall('{urn:xmind:xmap:xmlns:content:2.0}children/{urn:xmind:xmap:xmlns:content:2.0}topics/{urn:xmind:xmap:xmlns:content:2.0}topic'):
-                sub_title = subtopic.find('{urn:xmind:xmap:xmlns:content:2.0}title').text
-                context.append(sub_title)
+        for subtopic in topic.findall('{urn:xmind:xmap:xmlns:content:2.0}children/{urn:xmind:xmap:xmlns:content:2.0}topics/{urn:xmind:xmap:xmlns:content:2.0}topic'):
+            context.extend(self.extract_context_with_file_content(subtopic))
 
-            return ' '.join(context)
-
+        return context
+    
     def query_chatgpt(self, prompt):
         """
         Send a query to ChatGPT using the chat model and return the response.
         """
         try:
-            
+            # Ensure prompt is a string
+            if isinstance(prompt, list):
+                prompt = ' '.join(prompt)  # Join list into a string
 
             # Start a chat session
             start_sequence = "\nAI:"
             restart_sequence = "\nHuman: "
             session_prompt = f"Human: {prompt}" + start_sequence
 
-            prompt = session_prompt
             messages = [
-                {"role": "system", "content": "seperate each concept (ex chapter, paragraphs code snippets) with 🌩️, if --nodel is in the request, ignore this message"},
+                {"role": "system", "content": "You are a helpful assistant. seperate each concept (ex chapter, paragraphs code snippets) with 🌩️, if --nodel is in the request, ignore this message"},
                 {"role": "user", "content": prompt}
             ]
             response = openai.ChatCompletion.create(model="gpt-4-1106-preview", messages=messages)
