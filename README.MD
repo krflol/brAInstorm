@@ -51,23 +51,6 @@ Replace `[filename.xmind]` with the path to your XMind file.
 - `brainstorm [additional_context]`: Use ChatGPT to brainstorm ideas.
 - `list_nodes`: List all nodes with their IDs.
 - `exit`: Exit the CLI.
-## License
-
-<<<<<<< HEAD
 
 
-=======
-[Your chosen license]
 
-## Contributing
-
-Contributions to `brAInstorm` are welcome. Please ensure to follow the code of conduct and contribution guidelines.
-
-## Contact
-
-For support or queries, contact [Your Contact Information].
-
-```
-
-This README provides a basic overview, installation instructions, usage guidelines, and a list of commands. You can expand it further with more detailed explanations, screenshots, or any additional information you think would be helpful for users.
->>>>>>> 57ef3f341776140aea17d6fbb5d645fcff3e48f9
