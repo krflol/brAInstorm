@@ -1,0 +1,8 @@
+
+ [
+    {
+        "model": "gpt-4-1106-preview",
+        "api_key": "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",
+        "timeout": 800
+    }
+]

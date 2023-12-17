@@ -39,50 +39,6 @@ class MindMapEditorCLI(cmd.Cmd):
 
     # ... (existing methods)
 
-    def initialize_autogen(self):
-        config_list_gpt4 = config_list_from_json(
-            "OAI_CONFIG_LIST.json",
-            filter_dict={
-                "model": ["gpt-4-1106-preview", "gpt-4-0314", "gpt4", "gpt-4-32k", "gpt-4-32k-0314", "gpt-4-32k-v0314"],
-            },
-        )
-        llm_config = {"config_list": config_list_gpt4, "seed": 42}
-        self.user_proxy = UserProxyAgent(
-            name="User_proxy",
-            system_message='',
-            code_execution_config={"last_n_messages": 2, "work_dir": "groupchat"},
-            default_auto_reply="proceed with implementation. I will execute any code locally and send you the results.",
-            human_input_mode="TERMINATE"
-        )
-        self.coder = AssistantAgent(
-            name="Coder",
-            llm_config=llm_config,
-        )
-        self.pm = AssistantAgent(
-            name="Product_manager",
-            system_message="An expert in project management and research",
-            llm_config=llm_config,
-        )
-        self.groupchat = GroupChat(agents=[self.user_proxy, self.coder, self.pm], messages=[], max_round=12)
-        self.manager = GroupChatManager(groupchat=self.groupchat, llm_config=llm_config)
-
-    def do_autogen(self, prompt):
-        """
-        Start a brainstorming session using Autogen.
-        Usage: autogen [prompt]
-        """
-        self.user_proxy.initiate_chat(self.manager, message=prompt, clear_history=True)
-
-        autogen_responses = []
-        while not self.groupchat.terminated:
-            self.manager.step()
-            responses = [message.content for message in self.groupchat.latest_messages]
-            autogen_responses.extend(responses)
-
-        for suggestion in autogen_responses:
-            print("Autogen suggests:", suggestion)
-            if input("Add this section as a subnode? (y/n): ").lower() == 'y':
-                self.do_add(suggestion.strip())
 
     # ... (rest of the existing methods)
 
