@@ -386,7 +386,7 @@ class MindMapEditorCLI(cmd.Cmd):
         self.user_proxy.initiate_chat(self.manager, message=full_prompt, clear_history=True)
 
         autogen_responses = []
-        while not self.groupchat.terminated:
+        while "TERMINATE" not in autogen_responses[-1] :
             self.manager.step()
             responses = [message.content for message in self.groupchat.latest_messages]
             autogen_responses.extend(responses)
