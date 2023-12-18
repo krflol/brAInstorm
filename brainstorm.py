@@ -386,11 +386,14 @@ class MindMapEditorCLI(cmd.Cmd):
         self.user_proxy.initiate_chat(self.manager, message=full_prompt, clear_history=True)
 
         autogen_responses = []
-        while "TERMINATE" not in autogen_responses[-1] :
-            self.manager.step()
-            responses = [message.content for message in self.groupchat.latest_messages]
-            autogen_responses.extend(responses)
-
+        try:
+            while "TERMINATE" not in autogen_responses[-1]:
+                self.manager.step()
+                responses = [message.content for message in self.groupchat.latest_messages]
+                autogen_responses.extend(responses)
+        except IndexError:
+            print("No responses from Autogen.")
+            pass
         for suggestion in autogen_responses:
             print("Autogen suggests:", suggestion)
             if input("Add this section as a subnode? (y/n): ").lower() == 'y':
