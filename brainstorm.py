@@ -388,6 +388,8 @@ class MindMapEditorCLI(cmd.Cmd):
         autogen_responses = []
         try:
             while "TERMINATE" not in autogen_responses[-1]:
+                #sleep for 30 seconds
+                time.sleep(120)
                 self.manager.step()
                 responses = [message.content for message in self.groupchat.latest_messages]
                 autogen_responses.extend(responses)
