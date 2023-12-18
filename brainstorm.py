@@ -13,10 +13,13 @@ import pyperclip
 from autogen import AssistantAgent, UserProxyAgent, config_list_from_json, GroupChat, GroupChatManager
 import autogen
 from openai import OpenAI
+import openai
+
 
 
 # Load environment variables
 dotenv.load_dotenv()
+
 #autogen.api_key = os.getenv("AUTOGEN_API_KEY")  # Make sure to set this environment variable
 namespaces = {'xmlns': 'urn:xmind:xmap:xmlns:content:2.0'}
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
@@ -327,26 +330,22 @@ class MindMapEditorCLI(cmd.Cmd):
         Send a query to ChatGPT using the chat model and return the response.
         """
         try:
-            # Ensure prompt is a string
             if isinstance(prompt, list):
-                prompt = ' '.join(prompt)  # Join list into a string
+                prompt = ' '.join(prompt)
 
-            # Start a chat session
-            start_sequence = "\nAI:"
-            restart_sequence = "\nHuman: "
-            session_prompt = f"Human: {prompt}" + start_sequence
-
-            messages = [
-                {"role": "system", "content": "You are a helpful assistant. seperate each concept (ex chapter, paragraphs code snippets) with 🌩️, if --nodel is in the request, ignore this message"},
-                {"role": "user", "content": prompt}
-            ]
-            response = client.chat.completions.create(model="gpt-4-1106-preview", messages=messages)
-            response_content = response.choices[0].message['content']
+            response = client.chat.completions.create(
+                model="gpt-4-1106-preview",
+                messages=[
+                    {"role": "system", "content": "You are a helpful assistant."},
+                    {"role": "user", "content": prompt}
+                ]
+            )
+            # Correctly extracting the response content
+            response_content = response.choices[0].message.content.strip()
             return response_content
         except Exception as e:
             print("Error querying ChatGPT:", e)
-            return ""
-        
+            return ""                
 
 
     def initialize_autogen(self):

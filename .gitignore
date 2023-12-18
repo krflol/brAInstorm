@@ -155,3 +155,5 @@ cython_debug/
 *.xml
 *.zip
 .vscode/PythonImportHelper-v2-Completion.json
+OAI_CONFIG_LIST.json
+OAI_CONFIG_LIST.json
