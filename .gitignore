@@ -157,3 +157,8 @@ cython_debug/
 .vscode/PythonImportHelper-v2-Completion.json
 OAI_CONFIG_LIST.json
 OAI_CONFIG_LIST.json
+groupchat/novel_generator.py
+input.txt
+playground.bat
+playground.xmind
+tmp.md
