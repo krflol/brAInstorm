@@ -57,5 +57,4 @@ The Mind Map Editor CLI, named "brAInstorm," is a command-line application for i
 
 ## Note
 - This application requires a valid OpenAI API key for certain features like brainstorming with GPT models.
-- The XMind file must follow a specific structure to be compatible with this CLI.
-
+- This project uses .xmind files from Xmind update 8
