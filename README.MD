@@ -1,56 +1,57 @@
 
 
+# Mind Map Editor CLI (brAInstorm)
 
-# brAInstorm Mind Map Editor CLI
-[![Video Title](https://img.youtube.com/vi/wp6bOKYFHZo/0.jpg)](https://www.youtube.com/watch?v=wp6bOKYFHZo)
-[![Video Title](https://img.youtube.com/vi/V7i2284UoEk/0.jpg)](https://www.youtube.com/watch?v=V7i2284UoEk)
-
-
-`brAInstorm` is a command-line interface tool designed for creating and manipulating mind maps in XMind format. It integrates with OpenAI's GPT-4 to enhance brainstorming sessions, allowing for AI-powered suggestions and ideas.
+The Mind Map Editor CLI, named "brAInstorm," is a command-line application for interacting with XMind mind maps. It allows users to edit, view, and manage mind map topics, integrate with OpenAI's GPT models for brainstorming, and more.
 
 ## Features
-
-- Load and save XMind formatted mind maps.
-- Navigate and manipulate mind map nodes using simple integer IDs.
-- Use ChatGPT to brainstorm ideas based on the current topic.
-- Extract and utilize file contents linked in mind maps.
-- Copy the content of the currently selected node to the clipboard.
+- Load and edit XMind mind maps.
+- Copy content to clipboard.
+- Reload mind maps from file.
+- Add, edit, and remove topics.
+- List all topics and nodes.
+- Integrate with OpenAI's GPT models for brainstorming sessions.
+- Autogen support for collaborative brainstorming.
 
 ## Installation
 
-To use `brAInstorm`, you need Python installed on your system. Clone or download this repository to your local machine.
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/your-repository/brainstorm.git
+   ```
 
-You also need to install some dependencies:
+2. **Navigate to the project directory:**
+   ```bash
+   cd brainstorm
+   ```
 
-```bash
-pip install pyperclip openai
-```
-
-Make sure to have an OpenAI API key set as an environment variable or in a `.env` file in the project directory with the key `OPENAI_API_KEY`.
+3. **Install required dependencies:**
+   - Ensure that Python 3.6 or later is installed.
+   - Install the required Python packages:
+     ```bash
+     pip install cmd xml.etree.ElementTree zipfile sys dotenv os tempfile shutil time copy re pyperclip autogen openai
+     ```
 
 ## Usage
 
-To start `brAInstorm`, navigate to the directory containing `brainstorm.py` and run:
+1. **Set up environment variables:**
+   - Create a `.env` file in the project root.
+   - Add your OpenAI API key:
+     ```env
+     OPENAI_API_KEY=your_api_key_here
+     ```
 
-```bash
-python brainstorm.py [filename.xmind]
-```
+2. **Run the CLI:**
+   ```bash
+   python brainstorm.py [filename.xmind]
+   ```
+   Replace `[filename.xmind]` with the path to your XMind file.
 
-Replace `[filename.xmind]` with the path to your XMind file.
+3. **Use CLI commands:**
+   - Type `help` or `?` to list available commands.
+   - Use commands like `add`, `edit`, `remove`, `list_nodes`, and others to interact with the mind map.
 
-## Commands
-
-- `select [simple_id]`: Select a node by its simple integer ID.
-- `show`: Display the title of the current node.
-- `edit [new_title]`: Edit the title of the current node.
-- `add [title]`: Add a new subnode with the specified title.
-- `remove [topic_id]`: Remove a node by its ID.
-- `save`: Save changes back to the XMind file.
-- `reload`: Reload the mind map from the file.
-- `copy`: Copy the title and content of the current node to the clipboard.
-- `brainstorm [additional_context]`: Use ChatGPT to brainstorm ideas.
-- `list_nodes`: List all nodes with their IDs.
-- `exit`: Exit the CLI.
-
-
+## Note
+- This application requires a valid OpenAI API key for certain features like brainstorming with GPT models.
+- The XMind file must follow a specific structure to be compatible with this CLI.
 
