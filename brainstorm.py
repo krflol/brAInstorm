@@ -154,7 +154,9 @@ class MindMapEditorCLI(cmd.Cmd):
             simple_id = int(simple_id)
             topic = self.id_map[simple_id]
             self.current_topic = topic
+            
             print(f"Selected topic with simple ID {simple_id}")
+            #generate some ideas for the topic
         except (ValueError, KeyError):
             print(f"No topic found with simple ID {simple_id}")
 
@@ -338,7 +340,8 @@ class MindMapEditorCLI(cmd.Cmd):
                 messages=[
                     {"role": "system", "content": "You are a helpful assistant."},
                     {"role": "user", "content": prompt}
-                ]
+                ],
+                
             )
             # Correctly extracting the response content
             response_content = response.choices[0].message.content.strip()
