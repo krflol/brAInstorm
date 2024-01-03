@@ -262,32 +262,24 @@ class MindMapEditorCLI(cmd.Cmd):
 
                 # Serialize and write the updated content.xml
                 content_xml_path = os.path.join(temp_dir, 'content.xml')
-                
-                # Create the new root element and sheet element
-                xmap_content = ET.Element('xmap-content', {'xmlns': 'urn:xmind:xmap:xmlns:content:2.0'})
-                sheet = ET.SubElement(xmap_content, 'sheet')
-                
-                # Append the existing root topic to the new sheet
-                # Deep copy is needed to avoid altering the original root_topic
-                copied_root_topic = deepcopy(self.root_topic)
-                sheet.append(copied_root_topic)
 
-                # Write the modified XML tree to the content.xml file
-                tree = ET.ElementTree(xmap_content)
+                # Ensure that namespaces and attributes are preserved
+                tree = ET.ElementTree(self.root_topic)
                 tree.write(content_xml_path, encoding='UTF-8', xml_declaration=True)
 
                 # Create a new XMind file, copying other files and replacing content.xml
                 with zipfile.ZipFile(self.xmind_file_path, 'w', zipfile.ZIP_DEFLATED) as new_zip:
                     for folder, subs, files in os.walk(temp_dir):
                         for filename in files:
-                            file_path = os.path.join(folder, filename)
-                            arcname = os.path.relpath(file_path, temp_dir)
-                            new_zip.write(file_path, arcname)
+                            if filename != 'content.xml':  # Exclude original content.xml
+                                file_path = os.path.join(folder, filename)
+                                arcname = os.path.relpath(file_path, temp_dir)
+                                new_zip.write(file_path, arcname)
+                    new_zip.write(content_xml_path, 'content.xml')  # Add the new content.xml
 
             print(f"Saved changes to {self.xmind_file_path}")
         except Exception as e:
             print(f"Error saving the file: {e}")
-
     def do_brainstorm(self, additional_context=''):
         context_list = self.extract_context_with_file_content(self.current_topic)
         full_context = ' '.join(context_list)  # Combine context into a single string
@@ -297,10 +289,18 @@ class MindMapEditorCLI(cmd.Cmd):
         response = self.query_chatgpt(full_prompt)
         print("ChatGPT suggests:", response)    
 
-        if input("Add these sections as subnodes? (y/n): ").lower() == 'y':
+        action = input("Choose action: [S]ave to file, [A]dd as nodes, [C]ancel: ").lower()
+        if action == 's':
+            with open("tmp.md", "w") as file:
+                file.write(response)
+            print("Response saved to tmp.md.")
+        elif action == 'a':
             sections = self.split_response_into_sections(response)
             for section in sections:
                 self.do_add(section)
+            print("Sections added as nodes.")
+        elif action == 'c':
+            print("Action cancelled.")
     def split_response_into_sections(self, response):
         """
         Split the response into sections using a special cloud character as a delimiter.

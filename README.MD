@@ -2,8 +2,8 @@
 
 
 # brAInstorm Mind Map Editor CLI
-[![Video Title](https://img.youtube.com/vi/wp6bOKYFHZo/0.jpg)](https://www.youtube.com/watch?v=wp6bOKYFHZo)
-[![Video Title](https://img.youtube.com/vi/V7i2284UoEk/0.jpg)](https://www.youtube.com/watch?v=V7i2284UoEk)
+[![Video Title](https://img.youtube.com/vi/JMHiae9anYs/0.jpg)](https://www.youtube.com/watch?v=JMHiae9anYs)
+
 
 
 `brAInstorm` is a command-line interface tool designed for creating and manipulating mind maps in XMind format. It integrates with OpenAI's GPT-4 to enhance brainstorming sessions, allowing for AI-powered suggestions and ideas.
