@@ -5,7 +5,8 @@
 The Mind Map Editor CLI, named "brAInstorm," is a command-line application for interacting with XMind mind maps. It allows users to edit, view, and manage mind map topics, integrate with OpenAI's GPT models for brainstorming, and more.
 
 
-[![Video Title](https://img.youtube.com/vi/JMHiae9anYs/0.jpg)](https://www.youtube.com/watch?v=JMHiae9anYs)
+[![brAInstorm Demo](https://img.youtube.com/vi/JMHiae9anYs/0.jpg)](https://www.youtube.com/watch?v=JMHiae9anYs)
+
 
 
 ## Features
