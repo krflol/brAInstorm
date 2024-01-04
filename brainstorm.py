@@ -281,7 +281,10 @@ class MindMapEditorCLI(cmd.Cmd):
         except Exception as e:
             print(f"Error saving the file: {e}")
     def do_brainstorm(self, additional_context=''):
-        context_list = self.extract_context_with_file_content(self.current_topic)
+        #context_list = self.extract_context_with_file_content(self.current_topic)
+        #full_context = ' '.join(context_list)  # Combine context into a single string
+        #full_prompt = full_context + ' ' + additional_context.strip()
+        context_list = self.extract_context_with_file_content_and_depth(self.current_topic)
         full_context = ' '.join(context_list)  # Combine context into a single string
         full_prompt = full_context + ' ' + additional_context.strip()
 
@@ -326,11 +329,34 @@ class MindMapEditorCLI(cmd.Cmd):
             context.extend(self.extract_context_with_file_content(subtopic))
 
         return context
-    
+    def extract_context_with_file_content_and_depth(self, topic, path=""):
+        context = []
+        title_elem = topic.find('{urn:xmind:xmap:xmlns:content:2.0}title')
+        if title_elem is not None:
+            topic_id = topic.get('simple_id')
+            # The path for the root node is empty, so it won't be displayed in the context
+            node_path = f"{path}/{topic_id}" if path else topic_id
+            context_str = f"Node {node_path}: {title_elem.text}"
+
+            file_content = topic.get('file_content')
+            if file_content:
+                context_str += f"\nContent: {file_content.strip()}\n"
+            context.append(context_str)
+
+        # Recursively add context for each subtopic, using the path to track the hierarchy
+        for subtopic in topic.findall('{urn:xmind:xmap:xmlns:content:2.0}children/{urn:xmind:xmap:xmlns:content:2.0}topics/{urn:xmind:xmap:xmlns:content:2.0}topic'):
+            subtopic_path = f"{node_path}/{subtopic.get('simple_id')}"
+            context.extend(self.extract_context_with_file_content_and_depth(subtopic, subtopic_path))
+
+        return context    
     def query_chatgpt(self, prompt):
         """
         Send a query to ChatGPT using the chat model and return the response.
         """
+
+        system_message = '''The prompt is the structure of a mindmap.
+          Use the structure provided to extract meaning,
+            but do not copy the structure directly in your response.'''
         try:
             if isinstance(prompt, list):
                 prompt = ' '.join(prompt)
@@ -338,7 +364,7 @@ class MindMapEditorCLI(cmd.Cmd):
             response = client.chat.completions.create(
                 model="gpt-4-1106-preview",
                 messages=[
-                    {"role": "system", "content": "You are a helpful assistant."},
+                    {"role": "system", "content": system_message},
                     {"role": "user", "content": prompt}
                 ],
                 
@@ -383,10 +409,17 @@ class MindMapEditorCLI(cmd.Cmd):
         Start a brainstorming session using Autogen.
         Usage: autogen [prompt]
         """
-        context_list = self.extract_context_with_file_content(self.current_topic)
+        #context_list = self.extract_context_with_file_content(self.current_topic)
+        #context_list = self.extract_context_with_file_content_and_depth(self.current_topic)
+        #full_context = ' '.join(context_list)  # Combine context into a single string
+        #full_prompt = full_context + ' ' + prompt.strip()
+        context_list = self.extract_context_with_file_content_and_depth(self.current_topic)
         full_context = ' '.join(context_list)  # Combine context into a single string
         full_prompt = full_context + ' ' + prompt.strip()
-        self.user_proxy.initiate_chat(self.manager, message=full_prompt, clear_history=True)
+
+
+
+        self.user_proxy.initiate_chat(self.manager, message=full_prompt, clear_history=False)
 
         autogen_responses = []
         try:
