@@ -354,9 +354,7 @@ class MindMapEditorCLI(cmd.Cmd):
         Send a query to ChatGPT using the chat model and return the response.
         """
 
-        system_message = '''The prompt is the structure of a mindmap.
-          Use the structure provided to extract meaning,
-            but do not copy the structure directly in your response.'''
+        system_message = '''You are a helpful assistant.'''
         try:
             if isinstance(prompt, list):
                 prompt = ' '.join(prompt)
