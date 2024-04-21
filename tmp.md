@@ -1,43 +1,165 @@
-It looks like you'd like me to write some chapters for the cyber attack story based on the provided character outlines and story nodes. Here are two chapters based on this framework:
+Here is the improved Python code with type hints and comments:
 
----
+```python
+import cmd
+import xml.etree.ElementTree as ET
+import zipfile
+import sys
+import dotenv
+import os
+import tempfile
+import shutil
+import time
+from copy import deepcopy
+import re
+import pyperclip
+from autogen import AssistantAgent, UserProxyAgent, config_list_from_json, GroupChat, GroupChatManager
+import autogen
+from openai import OpenAI
+import openai
+from anthropic import Anthropic
 
-**Chapter 3: The Meeting Point**
+# Load environment variables
+dotenv.load_dotenv()
 
-Eric's muscles burned as he pushed through the throngs of bewildered people on the streets of Tallahassee. The once vibrant city had descended into a maze of confusion and unease within hours of the blackout. Mobile phones had turned into lifeless slabs of glass and metal in the absence of a network, leaving many to feel isolated and stranded.
+anthropic_client = Anthropic(
+    api_key=os.environ.get("ANTHROPIC_API_KEY"),  # type: str
+)
 
-Eric navigated through the chaos with one objective in mind—to reach the marina. There, Hector Ramirez, with his boat, awaited to set off on a journey that was meticulously planned yet uncertain in its trajectory. Every step taken was a step closer to home, or so Eric hoped.
+namespaces = {'xmlns': 'urn:xmind:xmap:xmlns:content:2.0'}  # type: dict[str, str]
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))  # type: OpenAI
 
-En route, he swung by the university. He knew Dr. Anna Zheng would either be on campus, laboring to secure her years of research, or at her home, which was equipped to be a stronghold in the event of any catastrophe. He had to ensure she was informed and safe; the group's success depended on every member's well-being.
+# Register the namespace
+ET.register_namespace('', namespaces['xmlns'])
 
-Upon arriving, he found Anna in her lab, head bent over her emergency comms, the solar-powered emergency lights casting an eerie glow on her face. She looked up as he entered, relief evident in her eyes. "Eric, I got the message. Is everyone else okay?"
+class MindMapEditorCLI(cmd.Cmd):
+    intro = 'Welcome to brAInstorm. Type help or ? to list commands.\n'  # type: str
+    prompt = '(brAInstorm) '  # type: str
 
-"We're gathering. It's time to execute the plan," Eric confirmed, his voice firm.
+    def __init__(self, xmind_file_path: str):
+        super().__init__()
+        self.xmind_file_path = xmind_file_path
+        self.root_topic = self.load_mind_map(xmind_file_path)  # type: ET.Element
+        self.current_topic = self.root_topic  # type: ET.Element
+        self.id_map = {}  # type: dict[int, ET.Element]
+        self.counter = 1  # type: int
+        self.map_ids(self.root_topic)
+        self.list_all_nodes(self.root_topic)
+        self.initialize_autogen()
 
-Anna nodded and grabbed her own get-home bag, packed with essentials. Her understanding of energy systems would be invaluable in the days ahead.
+    def initialize_data(self) -> None:
+        """
+        Initialize or reinitialize the data from the XMind file.
+        """
+        self.root_topic = self.load_mind_map(self.xmind_file_path)
+        self.current_topic = self.root_topic
+        self.id_map = {}  # Dictionary to map complex IDs to simple integers
+        self.counter = 1  # Counter for simple integer IDs
+        self.map_ids(self.root_topic)
+        self.list_all_nodes(self.root_topic)
 
-Together, they left the lab behind, heading toward the rendezvous point.
+    def do_copy(self, arg: str) -> None:
+        """
+        Copy the title and content of the current topic to the clipboard.
+        """
+        if self.current_topic is None:
+            print("No topic currently selected.")
+            return
 
-**Chapter 4: The Night Passage**
+        title_elem = self.current_topic.find('{urn:xmind:xmap:xmlns:content:2.0}title')
+        if title_elem is None:
+            print("No title for this topic.")
+            return
 
-The hush of the evening was an eerie contrast to the day's disarray. On the dock, Hector's boat bobbed gently in the water, ready to cut through the now-powerless world. Amidst the vast silence, the soft lapping of the waves against the hull seemed louder than ever.
+        title = title_elem.text  # type: str
+        content = title  # Start with the title
 
-As Eric and Anna approached, Hector emerged from the shadows, an unspoken understanding passing between them. The preparation phase of their plan had ended. Now, it was time to act.
+        file_content = self.current_topic.get('file_content')  # type: str
+        if file_content:
+            content += "\n\nFile Content:\n" + file_content
 
-"Let's get moving. We have a schedule to keep if we're to avoid attention," Hector whispered, as he helped his companions aboard.
+        # Copy content to clipboard
+        pyperclip.copy(content)
+        print("Content copied to clipboard.")
 
-Eric took the helm, starting the boat's quiet electric motor—a strategic choice for stealth. They needed the cover of darkness to travel undetected, to pick up other members of the Mutual Assistance Group. Hector manned the radio, keeping a vigilant ear tuned to the emergency channels, while Anna surveyed the equipment, ensuring all was in order.
+    def do_reload(self, arg: str) -> None:
+        """
+        Reload the mind map from the file.
+        """
+        print("Reloading the mind map...")
+        self.initialize_data()
+        self.do_select("1")
+        print("Mind map reloaded.")
 
-The boat slipped through the waters, the shoreline an ominous silhouette against the faint starlight. To their left arose the university where Anna had spent her days innovating for a better future—a future now cast into uncertainty.
+    def map_ids(self, topic: ET.Element, depth: int = 0) -> None:
+        """
+        Map each topic ID to a simpler integer ID.
+        """
+        if topic is None:
+            print("Error: Attempted to map IDs on a non-existent (None) topic.")
+            return  #
+                self.id_map[self.counter] = topic
+        topic.set('simple_id', str(self.counter))
+        self.counter += 1
 
-They passed areas that were familiar to them all, but tonight, they bore the look of a world changed, undefined by the normalcy of the grid, shaped instead by an unsettling quiet.
+        # Recursively apply this method to subtopics
+        topics_element = topic.find('{urn:xmind:xmap:xmlns:content:2.0}children/{urn:xmind:xmap:xmlns:content:2.0}topics')
+        if topics_element is not None:
+            for subtopic in topics_element.findall('{urn:xmind:xmap:xmlns:content:2.0}topic'):
+                self.map_ids(subtopic, depth + 1)
 
-Their next stop was to collect Courtney Latham. As Courtney climbed aboard, she brought news of growing unrest—shops being looted, streets blocked off by impromptu barricades, and the worrying silence of the emergency services.
+    def load_mind_map(self, file_path: str) -> ET.Element:
+        try:
+            with zipfile.ZipFile(file_path, 'r') as zip_ref:
+                with zip_ref.open('content.xml') as file:
+                    xml_content = file.read().decode('utf-8')
 
-The journey continued with tension coiling tighter with each new encounter, but the purpose that united them was stronger than the fear that stalked the unknown path ahead. The group's diverse abilities, from Jeff Stanley's medical expertise to Jasmine Clark's law enforcement experience, would be their edge in facing this new world.
+            xml_content = xml_content.replace('<xmap-content xmlns="urn:xmind:xmap:xmlns:content:2.0" xmlns="urn:xmind:xmap:xmlns:content:2.0">', '<xmap-content xmlns="urn:xmind:xmap:xmlns:content:2.0">', 1)
+            content_root = ET.fromstring(xml_content)
 
-Through the pitch-black night, the quiet hum of the boat's motor became a signal—not of the fall of the grid—but of the resolve and resourcefulness of those who had planned for darkness, who would strive together towards the light of a new dawn.
+            root_topic = content_root.find('{urn:xmind:xmap:xmlns:content:2.0}sheet').find('{urn:xmind:xmap:xmlns:content:2.0}topic')
+            self.extract_file_contents(root_topic)
+            return root_topic
+        except Exception as e:
+            print(f"Error loading mind map: {e}")
+            return None
 
----
+    def extract_file_contents(self, topic: ET.Element) -> None:
+        xlink_href = topic.get('{http://www.w3.org/1999/xlink}href')
+        if xlink_href and xlink_href.startswith('file://'):
+            file_path = xlink_href[7:]  # Remove 'file://' prefix to get the actual file path
+            try:
+                with open(file_path, 'r', encoding='utf-8') as file:  # Specify UTF-8 encoding
+                    file_content = file.read()
+                topic.set('file_content', file_content)
+            except UnicodeDecodeError:
+                # If utf-8 encoding fails, try a different encoding
+                try:
+                    with open(file_path, 'r', encoding='latin-1') as file:
+                        file_content = file.read()
+                    topic.set('file_content', file_content)
+                except Exception as e:
+                    print(f"Error reading file at {file_path} with latin-1 encoding: {e}")
+            except Exception as e:
+                print(f"Error reading file at {file_path} with utf-8 encoding: {e}")
 
-Please note that this is just a creative interpretation of the outline you've provided, and not part of an actual published novel.
+        for child in topic.findall('{urn:xmind:xmap:xmlns:content:2.0}children/{urn:xmind:xmap:xmlns:content:2.0}topics/{urn:xmind:xmap:xmlns:content:2.0}topic'):
+            self.extract_file_contents(child)
+
+    def do_select(self, simple_id: str) -> None:
+        """
+        Select a topic by its simple integer ID.
+        Usage: select [simple_id]
+        """
+        try:
+            simple_id = int(simple_id)
+            topic = self.id_map[simple_id]
+            self.current_topic = topic
+
+            print(f"Selected topic with simple ID {simple_id}")
+        except (ValueError, KeyError):
+            print(f"No topic found with simple ID {simple_id}")
+
+    def do_show(self, arg: str) -> None:
+        """
+        Show the title of the

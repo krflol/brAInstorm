@@ -33,5 +33,5 @@ pm = autogen.AssistantAgent(
 groupchat = autogen.GroupChat(agents=[user_proxy, coder, pm], messages=[], max_round=12)
 manager = autogen.GroupChatManager(groupchat=groupchat, llm_config=llm_config)
 
-user_proxy.initiate_chat(manager, message='''''', clear_history=False)
+user_proxy.initiate_chat(manager, message='''''', clear_history=True)
 # type exit to terminate the chat

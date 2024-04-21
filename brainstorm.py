@@ -14,11 +14,36 @@ from autogen import AssistantAgent, UserProxyAgent, config_list_from_json, Group
 import autogen
 from openai import OpenAI
 import openai
-
+from anthropic import Anthropic
 
 
 # Load environment variables
 dotenv.load_dotenv()
+
+anthropic_client = Anthropic(
+    # This is the default and can be omitted
+    api_key=os.environ.get("ANTHROPIC_API_KEY"),
+)
+
+
+message = anthropic_client.messages.create(
+    max_tokens=1024,
+    messages=[
+        {
+            "role": "user",
+            "content": "Hello, Claude",
+        }
+    ],
+    model="claude-3-opus-20240229",
+)
+print(message.content)
+
+
+
+
+
+
+
 
 #autogen.api_key = os.getenv("AUTOGEN_API_KEY")  # Make sure to set this environment variable
 namespaces = {'xmlns': 'urn:xmind:xmap:xmlns:content:2.0'}
@@ -83,6 +108,7 @@ class MindMapEditorCLI(cmd.Cmd):
         """
         print("Reloading the mind map...")
         self.initialize_data()
+        self.do_select(1)
         print("Mind map reloaded.")
 
     def map_ids(self, topic, depth=0):
@@ -284,14 +310,14 @@ class MindMapEditorCLI(cmd.Cmd):
         #context_list = self.extract_context_with_file_content(self.current_topic)
         #full_context = ' '.join(context_list)  # Combine context into a single string
         #full_prompt = full_context + ' ' + additional_context.strip()
+
+        #print("Final prompt to ChatGPT:", full_prompt)  # Debugging print
         context_list = self.extract_context_with_file_content_and_depth(self.current_topic)
         full_context = ' '.join(context_list)  # Combine context into a single string
         full_prompt = full_context + ' ' + additional_context.strip()
-
-        #print("Final prompt to ChatGPT:", full_prompt)  # Debugging print
+        print("context created. Querying ChatGPT...")
         response = self.query_chatgpt(full_prompt)
         print("ChatGPT suggests:", response)    
-
         action = input("Choose action: [S]ave to file, [A]dd as nodes, [C]ancel: ").lower()
         if action == 's':
             with open("tmp.md", "w") as file:
@@ -302,6 +328,8 @@ class MindMapEditorCLI(cmd.Cmd):
             for section in sections:
                 self.do_add(section)
             print("Sections added as nodes.")
+        #self.do_save('')
+        #self.do_reload('')
         elif action == 'c':
             print("Action cancelled.")
     def split_response_into_sections(self, response):
@@ -348,32 +376,64 @@ class MindMapEditorCLI(cmd.Cmd):
             subtopic_path = f"{node_path}/{subtopic.get('simple_id')}"
             context.extend(self.extract_context_with_file_content_and_depth(subtopic, subtopic_path))
 
-        return context    
+        return context   
+     
     def query_chatgpt(self, prompt):
         """
         Send a query to ChatGPT using the chat model and return the response.
         """
-
-        system_message = '''You are a helpful assistant.'''
-        try:
-            if isinstance(prompt, list):
-                prompt = ' '.join(prompt)
-
-            response = client.chat.completions.create(
-                model="gpt-4-1106-preview",
-                messages=[
-                    {"role": "system", "content": system_message},
-                    {"role": "user", "content": prompt}
-                ],
-                
-            )
-            # Correctly extracting the response content
-            response_content = response.choices[0].message.content.strip()
-            return response_content
-        except Exception as e:
-            print("Error querying ChatGPT:", e)
-            return ""                
-
+        message = anthropic_client.messages.create(
+            model="claude-3-opus-20240229",
+            max_tokens=1000,
+            temperature=0.0,
+            system="Respond only in Yoda-speak.",
+            messages=[
+                {"role": "user", "content": f"{prompt}"}
+            ]
+        )
+        #system_message = '''You are a helpful assistant.'''
+        #try:
+        #    if isinstance(prompt, list):
+        #        prompt = ' '.join(prompt)
+#
+        #    response = client.chat.completions.create(
+        #        model="gpt-4-1106-preview",
+        #        messages=[
+        #            {"role": "system", "content": system_message},
+        #            {"role": "user", "content": prompt}
+        #        ],
+        #        
+        #    )
+        #    # Correctly extracting the response content
+        #    response_content = response.choices[0].message.content.strip()
+        #    #regular expression to parse any python code from the response
+        #    try:
+        #        code = re.findall(r"```python(.*)```", response_content, re.DOTALL)
+        #        #response_content = self.query_chatgpt(f"{str(code)} improve this, to include type hints and docstrings")
+        #        print(response_content)
+        #    except:
+        #        code = None 
+        #    #regular expression to parse any commands from the response
+        #    try:
+        #        commands = re.findall(r"```bash(.*)```", response_content, re.DOTALL)
+        #    except:
+        #        commands = None
+#
+        #    #regular expression to parse any docker commands from the response
+        #    try:
+        #        docker = re.findall(r"```docker(.*)```", response_content, re.DOTALL)
+        #    except:
+        #        docker = None
+        #    if docker is not None:
+        #        print("dockerizing")#a placeholder for business logic
+        #    if code is not None:
+        #        print("coding")
+        #    if commands is not None:
+        #        print("executing")
+        #    return response_content
+        #except Exception as e:
+        #    print("Error querying ChatGPT:", e)
+        return message.content[0].text
 
     def initialize_autogen(self):
         config_list_gpt4 = config_list_from_json(
@@ -382,6 +442,10 @@ class MindMapEditorCLI(cmd.Cmd):
                 "model": ["gpt-4-1106-preview", "gpt-4-0314", "gpt4", "gpt-4-32k", "gpt-4-32k-0314", "gpt-4-32k-v0314"],
             },
         )
+        context_list = self.extract_context_with_file_content_and_depth(self.current_topic)
+        full_context = ' '.join(context_list)  # Combine context into a single string
+        full_prompt = full_context
+
         llm_config = {"config_list": config_list_gpt4, "seed": 42}
         self.user_proxy = UserProxyAgent(
             name="User_proxy",
@@ -393,13 +457,14 @@ class MindMapEditorCLI(cmd.Cmd):
         self.coder = AssistantAgent(
             name="Coder",
             llm_config=llm_config,
+            system_message=full_context,
         )
         self.pm = AssistantAgent(
             name="Product_manager",
             system_message="An expert in project management and research",
             llm_config=llm_config,
         )
-        self.groupchat = GroupChat(agents=[self.user_proxy, self.coder, self.pm], messages=[], max_round=12)
+        self.groupchat = GroupChat(agents=[self.user_proxy, self.coder, self.pm], messages=[], max_round=45)
         self.manager = GroupChatManager(groupchat=self.groupchat, llm_config=llm_config)
 
     def do_autogen(self, prompt):
@@ -423,7 +488,7 @@ class MindMapEditorCLI(cmd.Cmd):
         try:
             while "TERMINATE" not in autogen_responses[-1]:
                 #sleep for 30 seconds
-                time.sleep(120)
+                time.sleep(5)
                 self.manager.step()
                 responses = [message.content for message in self.groupchat.latest_messages]
                 autogen_responses.extend(responses)
