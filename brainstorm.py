@@ -315,7 +315,7 @@ class MindMapEditorCLI(cmd.Cmd):
         context_list = self.extract_context_with_file_content_and_depth(self.current_topic)
         full_context = ' '.join(context_list)  # Combine context into a single string
         full_prompt = full_context + ' ' + additional_context.strip()
-        print("context created. Querying ChatGPT...")
+        print("context created. Querying claude...")
         response = self.query_chatgpt(full_prompt)
         print("ChatGPT suggests:", response)    
         action = input("Choose action: [S]ave to file, [A]dd as nodes, [C]ancel: ").lower()
@@ -382,11 +382,10 @@ class MindMapEditorCLI(cmd.Cmd):
         """
         Send a query to ChatGPT using the chat model and return the response.
         """
-        message = anthropic_client.messages.create(
+        message = anthropic_client.messages.create( #max_tokens=1000,
             model="claude-3-opus-20240229",
-            max_tokens=1000,
             temperature=0.0,
-            system="Respond only in Yoda-speak.",
+            system="You are a helpful assistant.",
             messages=[
                 {"role": "user", "content": f"{prompt}"}
             ]
