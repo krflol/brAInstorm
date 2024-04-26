@@ -382,7 +382,8 @@ class MindMapEditorCLI(cmd.Cmd):
         """
         Send a query to ChatGPT using the chat model and return the response.
         """
-        message = anthropic_client.messages.create( #max_tokens=1000,
+        message = anthropic_client.messages.create( 
+            max_tokens=1000,
             model="claude-3-opus-20240229",
             temperature=0.0,
             system="You are a helpful assistant.",
@@ -435,36 +436,37 @@ class MindMapEditorCLI(cmd.Cmd):
         return message.content[0].text
 
     def initialize_autogen(self):
-        config_list_gpt4 = config_list_from_json(
-            "OAI_CONFIG_LIST.json",
-            filter_dict={
-                "model": ["gpt-4-1106-preview", "gpt-4-0314", "gpt4", "gpt-4-32k", "gpt-4-32k-0314", "gpt-4-32k-v0314"],
-            },
-        )
-        context_list = self.extract_context_with_file_content_and_depth(self.current_topic)
-        full_context = ' '.join(context_list)  # Combine context into a single string
-        full_prompt = full_context
+        pass
+       #config_list_gpt4 = config_list_from_json(
+       #    "OAI_CONFIG_LIST.json",
+       #    filter_dict={
+       #        "model": ["gpt-4-1106-preview", "gpt-4-0314", "gpt4", "gpt-4-32k", "gpt-4-32k-0314", "gpt-4-32k-v0314"],
+       #    },
+       #)
+        # context_list = self.extract_context_with_file_content_and_depth(self.current_topic)
+        # full_context = ' '.join(context_list)  # Combine context into a single string
+        # full_prompt = full_context
 
-        llm_config = {"config_list": config_list_gpt4, "seed": 42}
-        self.user_proxy = UserProxyAgent(
-            name="User_proxy",
-            system_message='we are using a mind map to organize our ideas and manage the project.',
-            code_execution_config={"last_n_messages": 2, "work_dir": "groupchat"},
-            default_auto_reply="proceed with implementation. I will execute any code locally and send you the results.",
-            human_input_mode="TERMINATE"
-        )
-        self.coder = AssistantAgent(
-            name="Coder",
-            llm_config=llm_config,
-            system_message=full_context,
-        )
-        self.pm = AssistantAgent(
-            name="Product_manager",
-            system_message="An expert in project management and research",
-            llm_config=llm_config,
-        )
-        self.groupchat = GroupChat(agents=[self.user_proxy, self.coder, self.pm], messages=[], max_round=45)
-        self.manager = GroupChatManager(groupchat=self.groupchat, llm_config=llm_config)
+        # llm_config = {"config_list": config_list_gpt4, "seed": 42}
+        # self.user_proxy = UserProxyAgent(
+        #     name="User_proxy",
+        #     system_message='we are using a mind map to organize our ideas and manage the project.',
+        #     code_execution_config={"last_n_messages": 2, "work_dir": "groupchat"},
+        #     default_auto_reply="proceed with implementation. I will execute any code locally and send you the results.",
+        #     human_input_mode="TERMINATE"
+        # )
+        # self.coder = AssistantAgent(
+        #     name="Coder",
+        #     llm_config=llm_config,
+        #     system_message=full_context,
+        # )
+        # self.pm = AssistantAgent(
+        #     name="Product_manager",
+        #     system_message="An expert in project management and research",
+        #     llm_config=llm_config,
+        # )
+        # self.groupchat = GroupChat(agents=[self.user_proxy, self.coder, self.pm], messages=[], max_round=45)
+        # self.manager = GroupChatManager(groupchat=self.groupchat, llm_config=llm_config)
 
     def do_autogen(self, prompt):
         """
